@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Вырезать и вставить</title>
+<style>
+:root{--bg:#33373d;--panel:#3d4249;--line:#50565f;--text:#eef0f2;--mut:#aab1ba;--acc:#6fd3e8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+main{max-width:860px;margin:0 auto;padding:16px 12px 60px}
+h1{font-size:19px;font-weight:650;margin:2px 0 14px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+.head{display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px}
+.n{width:24px;height:24px;border-radius:50%;background:var(--acc);color:#1d2226;display:grid;place-items:center;font-size:13px;flex:none}
+.stage{display:none;justify-content:center;margin:10px 0}
+.stage.on{display:flex}
+.stage canvas{touch-action:none;border-radius:6px;display:block}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn,button{appearance:none;border:1px solid var(--line);background:#4a5058;color:var(--text);padding:10px 14px;border-radius:9px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.pri{background:var(--acc);color:#1d2226;border-color:var(--acc)}
+button:disabled{opacity:.35;cursor:default}
+button:focus-visible,.btn:focus-within{outline:2px solid #fff;outline-offset:2px}
+.hint{color:var(--mut);font-size:13px;margin:8px 0 0}
+.out img{max-width:100%;border-radius:6px;display:block;margin:12px 0 8px}
+.pad{display:flex;gap:8px;align-items:center;color:var(--mut);font-size:13px;margin-top:10px}
+.pad input{flex:1;max-width:200px}
+</style>
+</head>
+<body>
+<main>
+<h1>Вырезать и вставить</h1>
+
+<section class="step">
+  <div class="head"><span class="n">1</span>Фото, из которого вырезаем</div>
+  <label class="btn">Выбрать фото<input type="file" accept="image/*" id="f1" hidden></label>
+  <div class="stage" id="st1"><canvas></canvas></div>
+  <div class="row"><button class="pri" id="cut" disabled>Вырезать</button></div>
+  <p class="hint">Тяни цветные углы. Тянешь внутри рамки — двигается вся рамка.</p>
+  <div class="out" id="o1"></div>
+</section>
+
+<section class="step">
+  <div class="head"><span class="n">2</span>Фото, куда вставляем</div>
+  <label class="btn">Выбрать фото<input type="file" accept="image/*" id="f2" hidden></label>
+  <div class="stage" id="st2"><canvas></canvas></div>
+  <div class="row">
+    <button class="pri" id="paste" disabled>Вставить</button>
+    <button id="detect" disabled>Найти чёрное</button>
+    <button id="rot" disabled>Повернуть нумерацию</button>
+  </div>
+  <label class="pad">Нахлёст краёв <input type="range" id="pad" min="0" max="4" step="0.5" value="1"><span id="padv">1 px</span></label>
+  <p class="hint" id="hint2">Угол 1 здесь совпадёт с углом 1 на первом фото, 2 с 2 и так далее.</p>
+  <div class="out" id="o2"></div>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const COLORS=['#ff5a5f','#3ddc97','#4da3ff','#ffd23f'];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+/* ---------- geometry ---------- */
+function poly(c,P){c.moveTo(P[0].x,P[0].y);for(let i=1;i<P.length;i++)c.lineTo(P[i].x,P[i].y);c.closePath();}
+function cross(o,a,b){return (a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);}
+function isConvex(P){let s=0;for(let i=0;i<4;i++){const cr=cross(P[i],P[(i+1)%4],P[(i+2)%4]);if(Math.abs(cr)<1e-6)return false;const g=Math.sign(cr);if(!s)s=g;else if(g!==s)return false;}return true;}
+function inside(P,p){let r=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)r=!r;}return r;}
+function shoelace(P){let s=0;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length];s+=a.x*b.y-b.x*a.y;}return s;}
+
+function solve(A,b){const n=b.length;
+  for(let i=0;i<n;i++){let m=i;for(let r=i+1;r<n;r++)if(Math.abs(A[r][i])>Math.abs(A[m][i]))m=r;
+    [A[i],A[m]]=[A[m],A[i]];[b[i],b[m]]=[b[m],b[i]];
+    for(let r=i+1;r<n;r++){const f=A[r][i]/A[i][i];for(let c=i;c<n;c++)A[r][c]-=f*A[i][c];b[r]-=f*b[i];}}
+  const x=new Array(n);for(let i=n-1;i>=0;i--){let s=b[i];for(let c=i+1;c<n;c++)s-=A[i][c]*x[c];x[i]=s/A[i][i];}return x;}
+// homography mapping a[i] -> b[i]
+function homography(a,b){const A=[],B=[];
+  for(let i=0;i<4;i++){const {x,y}=a[i],{x:u,y:v}=b[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]);B.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]);B.push(v);}
+  return solve(A,B);}
+
+/* ---------- editor ---------- */
+function drawClipped(c,img,sx,sy,sw,sh,dx,dy,dw,dh){
+  const W=img.naturalWidth,H=img.naturalHeight,kx=dw/sw,ky=dh/sh;
+  const x0=Math.max(0,sx),y0=Math.max(0,sy),x1=Math.min(W,sx+sw),y1=Math.min(H,sy+sh);
+  if(x1<=x0||y1<=y0)return;
+  c.drawImage(img,x0,y0,x1-x0,y1-y0,dx+(x0-sx)*kx,dy+(y0-sy)*ky,(x1-x0)*kx,(y1-y0)*ky);}
+
+class Editor{
+  constructor(stage){
+    this.stage=stage;this.cv=stage.querySelector('canvas');this.ctx=this.cv.getContext('2d');
+    this.img=null;this.pts=null;this.drag=null;
+    this.cv.addEventListener('pointerdown',e=>this.down(e));
+    this.cv.addEventListener('pointermove',e=>this.move(e));
+    ['pointerup','pointercancel'].forEach(t=>this.cv.addEventListener(t,()=>this.up()));
+  }
+  setImage(img,pts){
+    this.img=img;const W=img.naturalWidth,H=img.naturalHeight;
+    this.pts=pts||[{x:W*.25,y:H*.25},{x:W*.75,y:H*.25},{x:W*.75,y:H*.75},{x:W*.25,y:H*.75}];
+    this.stage.classList.add('on');this.fit();
+  }
+  fit(){
+    if(!this.img)return;
+    const W=this.img.naturalWidth,H=this.img.naturalHeight;
+    const s=Math.min(this.stage.clientWidth/W,window.innerHeight*.7/H);
+    this.s=s;this.dw=W*s;this.dh=H*s;this.dpr=window.devicePixelRatio||1;
+    this.cv.width=Math.round(this.dw*this.dpr);this.cv.height=Math.round(this.dh*this.dpr);
+    this.cv.style.width=this.dw+'px';this.cv.style.height=this.dh+'px';
+    this.draw();
+  }
+  pos(e){const r=this.cv.getBoundingClientRect();return{x:(e.clientX-r.left)/this.s,y:(e.clientY-r.top)/this.s};}
+  down(e){
+    if(!this.img)return;
+    const p=this.pos(e);let best=-1,bd=Infinity;
+    this.pts.forEach((q,i)=>{const d=Math.hypot(q.x-p.x,q.y-p.y)*this.s;if(d<bd){bd=d;best=i;}});
+    if(bd<40)this.drag={i:best,ox:this.pts[best].x-p.x,oy:this.pts[best].y-p.y};
+    else if(inside(this.pts,p))this.drag={all:true,last:p};
+    else return;
+    this.cv.setPointerCapture(e.pointerId);e.preventDefault();this.draw();
+  }
+  move(e){
+    if(!this.drag)return;
+    const p=this.pos(e),W=this.img.naturalWidth,H=this.img.naturalHeight;
+    if(this.drag.all){
+      const xs=this.pts.map(q=>q.x),ys=this.pts.map(q=>q.y);
+      const dx=clamp(p.x-this.drag.last.x,-Math.min(...xs),W-Math.max(...xs));
+      const dy=clamp(p.y-this.drag.last.y,-Math.min(...ys),H-Math.max(...ys));
+      this.pts.forEach(q=>{q.x+=dx;q.y+=dy;});this.drag.last=p;
+    }else{
+      const q=this.pts[this.drag.i];
+      q.x=clamp(p.x+this.drag.ox,0,W);q.y=clamp(p.y+this.drag.oy,0,H);
+    }
+    this.draw();
+  }
+  up(){if(this.drag){this.drag=null;this.draw();}}
+  draw(){
+    const c=this.ctx,s=this.s;
+    c.setTransform(this.dpr,0,0,this.dpr,0,0);c.imageSmoothingEnabled=true;
+    c.clearRect(0,0,this.dw,this.dh);c.drawImage(this.img,0,0,this.dw,this.dh);
+    const P=this.pts.map(q=>({x:q.x*s,y:q.y*s}));
+    c.beginPath();c.rect(0,0,this.dw,this.dh);poly(c,P);c.fillStyle='rgba(20,24,28,.5)';c.fill('evenodd');
+    c.beginPath();poly(c,P);c.strokeStyle='#fff';c.lineWidth=1.5;c.stroke();
+    const cx=P.reduce((a,q)=>a+q.x,0)/4,cy=P.reduce((a,q)=>a+q.y,0)/4;
+    P.forEach((q,i)=>{
+      c.beginPath();c.arc(q.x,q.y,12,0,7);c.lineWidth=3;c.strokeStyle=COLORS[i];c.stroke();
+      c.beginPath();c.arc(q.x,q.y,1.8,0,7);c.fillStyle=COLORS[i];c.fill();
+      const dx=q.x-cx,dy=q.y-cy,l=Math.hypot(dx,dy)||1,lx=q.x+dx/l*24,ly=q.y+dy/l*24;
+      c.beginPath();c.arc(lx,ly,9,0,7);c.fillStyle=COLORS[i];c.fill();
+      c.fillStyle='#1d2226';c.font='bold 12px system-ui';c.textAlign='center';c.textBaseline='middle';c.fillText(i+1,lx,ly+.5);
+    });
+    if(this.drag&&!this.drag.all)this.loupe(this.drag.i);
+  }
+  loupe(i){
+    const c=this.ctx,q=this.pts[i],L=Math.min(140,this.dw*.42),z=4,sz=L/(this.s*z);
+    const lx=q.x*this.s<this.dw/2?this.dw-L-8:8,ly=q.y*this.s<L+20?this.dh-L-8:8;
+    const ox=q.x-sz/2,oy=q.y-sz/2,k=L/sz,T=p=>({x:lx+(p.x-ox)*k,y:ly+(p.y-oy)*k});
+    c.save();c.beginPath();c.arc(lx+L/2,ly+L/2,L/2,0,7);c.clip();
+    c.fillStyle='#222';c.fillRect(lx,ly,L,L);
+    c.imageSmoothingEnabled=false;drawClipped(c,this.img,ox,oy,sz,sz,lx,ly,L,L);
+    c.beginPath();poly(c,this.pts.map(T));c.strokeStyle='rgba(255,255,255,.8)';c.lineWidth=1;c.stroke();
+    c.strokeStyle=COLORS[i];c.lineWidth=1;c.beginPath();
+    c.moveTo(lx+L/2,ly);c.lineTo(lx+L/2,ly+L);c.moveTo(lx,ly+L/2);c.lineTo(lx+L,ly+L/2);c.stroke();
+    c.restore();
+    c.beginPath();c.arc(lx+L/2,ly+L/2,L/2,0,7);c.lineWidth=3;c.strokeStyle=COLORS[i];c.stroke();
+  }
+}
+
+/* ---------- image ops ---------- */
+function loadImg(file){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('Не удалось открыть файл'));im.src=URL.createObjectURL(file);});}
+function canvasOf(img){const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0);return c;}
+
+function findBlack(img,thr=40){
+  const W=img.naturalWidth,H=img.naturalHeight,k=Math.min(1,1600/Math.max(W,H));
+  const w=Math.max(1,Math.round(W*k)),h=Math.max(1,Math.round(H*k));
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,N=w*h,m=new Uint8Array(N),q=new Int32Array(N);
+  for(let i=0,j=0;i<N;i++,j+=4)m[i]=(d[j]<thr&&d[j+1]<thr&&d[j+2]<thr)?1:0;
+  let best=null;
+  for(let st=0;st<N;st++){
+    if(!m[st])continue;
+    let head=0,tail=0,n=0;q[tail++]=st;m[st]=0;
+    let a1=Infinity,b1=-Infinity,a2=Infinity,b2=-Infinity,tl=st,br=st,bl=st,tr=st;
+    while(head<tail){
+      const i=q[head++];n++;const px=i%w,py=(i/w)|0,s1=px+py,s2=px-py;
+      if(s1<a1){a1=s1;tl=i}if(s1>b1){b1=s1;br=i}if(s2<a2){a2=s2;bl=i}if(s2>b2){b2=s2;tr=i}
+      if(px>0&&m[i-1]){m[i-1]=0;q[tail++]=i-1}
+      if(px<w-1&&m[i+1]){m[i+1]=0;q[tail++]=i+1}
+      if(py>0&&m[i-w]){m[i-w]=0;q[tail++]=i-w}
+      if(py<h-1&&m[i+w]){m[i+w]=0;q[tail++]=i+w}
+    }
+    if(n<N*0.0005)continue;
+    const P=(i,ox,oy)=>({x:(i%w+ox)/k,y:(((i/w)|0)+oy)/k});
+    const pts=[P(tl,0,0),P(tr,1,0),P(br,1,1),P(bl,0,1)];
+    const area=Math.abs(shoelace(pts))/2*k*k;
+    if(area<=0||n/area<0.8)continue; // not quad-shaped
+    if(!best||n>best.n)best={n,pts};
+  }
+  return best?best.pts:null;
+}
+
+function warpInto(dst,src,srcQ,dstQ,pad){
+  const dctx=dst.getContext('2d',{willReadFrequently:true});
+  const Ws=src.width,Hs=src.height,sd=src.getContext('2d',{willReadFrequently:true}).getImageData(0,0,Ws,Hs).data;
+  const h=homography(dstQ,srcQ);
+  const xs=dstQ.map(p=>p.x),ys=dstQ.map(p=>p.y);
+  const bx=Math.max(0,Math.floor(Math.min(...xs)-pad-1)),by=Math.max(0,Math.floor(Math.min(...ys)-pad-1));
+  const ex=Math.min(dst.width,Math.ceil(Math.max(...xs)+pad+1)),ey=Math.min(dst.height,Math.ceil(Math.max(...ys)+pad+1));
+  const bw=ex-bx,bh=ey-by;if(bw<=0||bh<=0)return;
+  const id=dctx.getImageData(bx,by,bw,bh),d=id.data;
+  const o=Math.sign(shoelace(dstQ));
+  const E=dstQ.map((a,i)=>{const b=dstQ[(i+1)%4],l=Math.hypot(b.x-a.x,b.y-a.y);return[a.x,a.y,(b.x-a.x)/l*o,(b.y-a.y)/l*o];});
+  for(let y=0;y<bh;y++){
+    const py=by+y+.5;
+    for(let x=0;x<bw;x++){
+      const px=bx+x+.5;
+      let m=Infinity;
+      for(let e=0;e<4;e++){const g=E[e],v=g[2]*(py-g[1])-g[3]*(px-g[0]);if(v<m)m=v;}
+      const a=Math.min(1,m+pad+.5);if(a<=0)continue;
+      const w=h[6]*px+h[7]*py+1;
+      const sx=clamp((h[0]*px+h[1]*py+h[2])/w-.5,0,Ws-1),sy=clamp((h[3]*px+h[4]*py+h[5])/w-.5,0,Hs-1);
+      const x0=sx|0,y0=sy|0,x1=Math.min(x0+1,Ws-1),y1=Math.min(y0+1,Hs-1),fx=sx-x0,fy=sy-y0;
+      const i00=(y0*Ws+x0)*4,i10=(y0*Ws+x1)*4,i01=(y1*Ws+x0)*4,i11=(y1*Ws+x1)*4,di=(y*bw+x)*4;
+      for(let ch=0;ch<3;ch++){
+        const v=(sd[i00+ch]*(1-fx)+sd[i10+ch]*fx)*(1-fy)+(sd[i01+ch]*(1-fx)+sd[i11+ch]*fx)*fy;
+        d[di+ch]=d[di+ch]*(1-a)+v*a;
+      }
+      d[di+3]=255;
+    }
+  }
+  dctx.putImageData(id,bx,by);
+}
+
+const urls={};
+function show(canvas,el,name){return new Promise(res=>canvas.toBlob(b=>{
+  if(urls[name])URL.revokeObjectURL(urls[name]);
+  const u=urls[name]=URL.createObjectURL(b);
+  el.innerHTML=`<img src="${u}" alt=""><div class="row"><a class="btn pri" href="${u}" download="${name}.jpg">Скачать</a></div><p class="hint">На телефоне можно ещё долго нажать на картинку и сохранить.</p>`;
+  res();},'image/jpeg',0.95));}
+
+function busy(btn,fn){const t=btn.textContent;btn.disabled=true;btn.textContent='Обработка…';
+  setTimeout(async()=>{try{await fn()}catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent=t;}},30);}
+
+/* ---------- wiring ---------- */
+const e1=new Editor($('#st1')),e2=new Editor($('#st2'));
+const BAD='Углы перекручены: рамка должна быть выпуклой, углы 1→2→3→4 идут по кругу.';
+
+$('#f1').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  e1.setImage(await loadImg(f));$('#o1').innerHTML='';$('#cut').disabled=false;upd();};
+$('#f2').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  const img=await loadImg(f),q=findBlack(img);e2.setImage(img,q);$('#o2').innerHTML='';
+  $('#hint2').textContent=q?'Чёрная область найдена автоматически, проверь углы.':'Чёрную область не нашёл, расставь углы вручную.';upd();};
+function upd(){const ok=!!e2.img;$('#detect').disabled=!ok;$('#rot').disabled=!ok;$('#paste').disabled=!(ok&&e1.img);}
+
+$('#cut').onclick=()=>busy($('#cut'),async()=>{
+  if(!isConvex(e1.pts))throw new Error(BAD);
+  const c=canvasOf(e1.img),x=c.getContext('2d');x.beginPath();poly(x,e1.pts);x.fillStyle='#000';x.fill();
+  await show(c,$('#o1'),'cut');});
+
+$('#detect').onclick=()=>{const q=findBlack(e2.img);
+  if(q){e2.pts=q;e2.draw();$('#hint2').textContent='Чёрная область найдена, проверь углы.';}
+  else $('#hint2').textContent='Чёрную область не нашёл, расставь углы вручную.';};
+$('#rot').onclick=()=>{e2.pts.push(e2.pts.shift());e2.draw();};
+$('#pad').oninput=e=>$('#padv').textContent=e.target.value+' px';
+
+$('#paste').onclick=()=>busy($('#paste'),async()=>{
+  if(!isConvex(e1.pts)||!isConvex(e2.pts))throw new Error(BAD);
+  const dst=canvasOf(e2.img),src=canvasOf(e1.img);
+  warpInto(dst,src,e1.pts,e2.pts,parseFloat($('#pad').value));
+  await show(dst,$('#o2'),'result');});
+
+let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{e1.fit();e2.fit();},100);});
+</script>
+</body>
+</html>
