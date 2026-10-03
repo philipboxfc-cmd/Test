@@ -1,0 +1,14 @@
+# KindleNotes settings (/mnt/us/notes/config). Edit over USB, then restart
+# the Kindle (or run notes.sh restart over SSH).
+
+# Port of the notes page: http://127.0.0.1:8080/
+PORT=8080
+
+# LAN=1 makes the notes page reachable from other devices in your Wi-Fi
+# network (laptop, phone): http://<kindle-ip>:8080/ — handy for typing long
+# notes on a real keyboard. There is no password, so keep LAN=0 on public
+# networks.
+LAN=0
+
+# Interface language: ru or en
+UI_LANG=ru
