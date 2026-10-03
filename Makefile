@@ -10,10 +10,17 @@
 DEVICE ?= k3w
 export DEVICE KINDLETOOL CC_ARM
 
-.PHONY: all native test test-arm clean
+.PHONY: all native test test-arm kindlet kindlet-test clean
 
 all:
 	./build.sh
+
+# native Kindle app (Kindlet) -> dist/KindleNotes*.azw2; needs JDK 8
+kindlet:
+	JAVA_HOME=$${JDK8:-/usr/lib/jvm/java-8-openjdk-amd64} kindlet/build.sh
+
+kindlet-test: kindlet
+	JAVA_HOME=$${JDK8:-/usr/lib/jvm/java-8-openjdk-amd64} kindlet/test.sh
 
 native: build/notesd-native
 
@@ -28,4 +35,4 @@ test-arm:
 	NOTESD="qemu-arm-static payload/notes/bin/notesd" PORT=18081 tests/run.sh
 
 clean:
-	rm -rf build
+	rm -rf build kindlet/build
