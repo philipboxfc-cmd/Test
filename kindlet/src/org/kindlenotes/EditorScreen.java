@@ -6,6 +6,8 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import com.amazon.kindle.kindlet.event.KindleKeyCodes;
 import com.amazon.kindle.kindlet.ui.KButton;
@@ -29,16 +31,23 @@ public final class EditorScreen extends Screen {
     private final KButton saveButton = new KButton(Strings.SAVE_BACK);
     private final KButton deleteButton = new KButton(Strings.DELETE);
     private final KButton exportButton = new KButton(Strings.EXPORT);
+    private final SimpleDateFormat dateFmt = new SimpleDateFormat("dd.MM.yyyy HH:mm");
 
     private String id;             // null until a new note is saved
+    private final long mtime;      // 0 for a new note
     private String original = "";  // text as loaded, to skip no-op saves
     private boolean closed;
 
-    public EditorScreen(NotesKindlet app, String noteId, String initial) {
-        super(app, new BorderLayout(6, 6));
+    public EditorScreen(NotesKindlet app, String noteId, String initial, long modified) {
+        super(app, new BorderLayout(0, Ui.ROW_GAP));
         this.id = noteId;
+        this.mtime = modified;
         this.original = initial == null ? "" : initial;
 
+        Font bold = Ui.bold(info, 22);
+        if (bold != null) {
+            info.setFont(bold);
+        }
         add(info, BorderLayout.NORTH);
 
         text = new KTextArea(original, ROWS, COLUMNS);
@@ -74,16 +83,10 @@ public final class EditorScreen extends Screen {
     }
 
     private void updateInfo() {
-        String s;
         if (id == null) {
-            s = Strings.NEW_NOTE_TITLE;
+            info.setText(Strings.NEW_NOTE_TITLE);
         } else {
-            s = Strings.EDITING + " · " + id;
-        }
-        info.setText(s + "   ·   " + Strings.FIRST_LINE_HINT);
-        Font f = Ui.fontFor(info.getText(), 16);
-        if (f != null) {
-            info.setFont(f);
+            info.setText(Strings.NOTE_FROM + " " + dateFmt.format(new Date(mtime > 0 ? mtime : System.currentTimeMillis())));
         }
     }
 
@@ -161,7 +164,7 @@ public final class EditorScreen extends Screen {
             return;                            // nothing to export: empty note
         }
         java.io.File out = app.store().exportToLibrary(id, currentText());
-        String msg = out == null ? Strings.EXPORT_FAILED : Strings.EXPORTED + out.getPath() + Strings.EXPORTED_HINT;
+        String msg = out == null ? Strings.EXPORT_FAILED : Strings.EXPORTED + out.getName() + Strings.EXPORTED_HINT;
         app.showMessage(Strings.EXPORT, msg, new Runnable() {
             public void run() {
                 app.showEditor(EditorScreen.this);

@@ -23,55 +23,68 @@ import com.amazon.kindle.kindlet.ui.KTextComponent;
 import com.amazon.kindle.kindlet.ui.KTextField;
 
 /**
- * The notebook: a search field, a page of note buttons (newest first) and a
- * status line. Page-turn keys flip pages, the 5-way picks a note, the
- * keyboard row Q..P (or 1..0) opens the n-th note on the page.
+ * The notebook: a one-line header (count, page), an optional search row
+ * (Menu -> Search) and a page of note buttons, newest first. Page-turn keys
+ * flip pages, the 5-way picks a note, the keyboard row Q..P (or 1..0)
+ * opens row 1..10 of the page.
  */
 public final class ListScreen extends Screen {
     private static final int PAGE_SIZE = 9;          // + the "new note" row on page 1
-    private static final int LABEL_MAX = 42;
+    private static final int LABEL_MAX = 34;
 
-    private final KLabel header = new KLabel(Strings.NOTES);
-    private final KTextField search = new KTextField(30);
-    private final KPanel rows = new KPanel(new GridLayout(PAGE_SIZE + 1, 1, 0, 6));
-    private final KLabel status = new KLabel("");
+    private final KLabel countLabel = new KLabel("");
+    private final KLabel pageLabel = new KLabel("");
+    private final KPanel top = new KPanel(new BorderLayout(0, ROW_GAP));
+    private final KPanel searchRow = new KPanel(new BorderLayout(8, 0));
+    private final KTextField search = new KTextField(28);
+    private final KPanel rows = new KPanel(new GridLayout(0, 1, 0, ROW_GAP));
     private final SimpleDateFormat dateFmt = new SimpleDateFormat("dd.MM.yy HH:mm");
+
+    private static final int ROW_GAP = Ui.ROW_GAP;
 
     private Note[] all = new Note[0];
     private Note[] shown = new Note[0];
     private String query = "";
     private int page = 0;
+    private boolean searchVisible;
     private final List pageButtons = new ArrayList();
     private KButton newButton;
 
     public ListScreen(NotesKindlet app) {
-        super(app, new BorderLayout(6, 6));
+        super(app, new BorderLayout(0, ROW_GAP));
 
-        KPanel top = new KPanel(new BorderLayout(6, 0));
+        KPanel header = new KPanel(new BorderLayout(8, 0));
+        Font bold = Ui.bold(countLabel, 22);
+        if (bold != null) {
+            countLabel.setFont(bold);
+            pageLabel.setFont(bold);
+        }
+        header.add(countLabel, BorderLayout.CENTER);
+        header.add(pageLabel, BorderLayout.EAST);
         top.add(header, BorderLayout.NORTH);
-        KPanel searchRow = new KPanel(new BorderLayout(6, 0));
+
+        KLabel searchLabel = new KLabel(Strings.SEARCH + ":");
+        searchRow.add(searchLabel, BorderLayout.WEST);
         searchRow.add(search, BorderLayout.CENTER);
         search.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 applySearch();
             }
         });
-        KButton find = new KButton(Strings.SEARCH);
+        KButton find = new KButton(Strings.FIND);
         find.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 applySearch();
             }
         });
-        applyFont(find, Strings.SEARCH);
         searchRow.add(find, BorderLayout.EAST);
-        KLabel searchLabel = new KLabel(Strings.SEARCH_HINT);
-        applyFont(searchLabel, Strings.SEARCH_HINT);
-        searchRow.add(searchLabel, BorderLayout.WEST);
-        top.add(searchRow, BorderLayout.SOUTH);
+
         add(top, BorderLayout.NORTH);
 
-        add(rows, BorderLayout.CENTER);
-        add(status, BorderLayout.SOUTH);
+        // rows keep their preferred height instead of being stretched over the screen
+        KPanel body = new KPanel(new BorderLayout());
+        body.add(rows, BorderLayout.NORTH);
+        add(body, BorderLayout.CENTER);
     }
 
     /** Re-reads the notebook from disk and shows the first page. */
@@ -82,20 +95,40 @@ public final class ListScreen extends Screen {
         render();
     }
 
+    public void showSearch() {
+        if (!searchVisible) {
+            top.add(searchRow, BorderLayout.SOUTH);
+            searchVisible = true;
+            validate();
+            repaint();
+        }
+        search.requestFocus();
+    }
+
+    private void hideSearch() {
+        if (searchVisible) {
+            top.remove(searchRow);
+            searchVisible = false;
+        }
+    }
+
     private void applySearch() {
         String q = search.getText();
         query = q == null ? "" : q.trim();
         page = 0;
         filter();
         render();
+        focusFirst();
     }
 
     private void clearSearch() {
         query = "";
         search.setText("");
+        hideSearch();
         page = 0;
         filter();
         render();
+        focusFirst();
     }
 
     private void filter() {
@@ -114,11 +147,10 @@ public final class ListScreen extends Screen {
 
     private int pageCount() {
         int n = shown.length;
-        int first = PAGE_SIZE;                     // page 1 holds the "new note" row too
-        if (n <= first) {
+        if (n <= PAGE_SIZE) {
             return 1;
         }
-        return 1 + (n - first + PAGE_SIZE - 1) / PAGE_SIZE;
+        return 1 + (n - PAGE_SIZE + PAGE_SIZE - 1) / PAGE_SIZE;
     }
 
     private void render() {
@@ -132,12 +164,12 @@ public final class ListScreen extends Screen {
             page = 0;
         }
 
-        header.setText(Strings.NOTES + "  ·  " + Strings.COUNT + all.length
-                + (query.length() > 0 ? "  ·  " + Strings.SEARCH + ": " + query : ""));
-        Font hf = Ui.fontFor(header.getText(), 20);
-        if (hf != null) {
-            header.setFont(hf);
+        if (query.length() > 0) {
+            countLabel.setText(Strings.SEARCH + ": " + query + "  (" + shown.length + ")");
+        } else {
+            countLabel.setText(Strings.COUNT + all.length);
         }
+        pageLabel.setText(pages > 1 ? Strings.PAGE + " " + (page + 1) + "/" + pages : "");
 
         int start;
         if (page == 0) {
@@ -151,7 +183,6 @@ public final class ListScreen extends Screen {
                     }
                 }
             });
-            applyFont(newButton, newButton.getLabel());
             rows.add(newButton);
             pageButtons.add(newButton);
             start = 0;
@@ -159,13 +190,12 @@ public final class ListScreen extends Screen {
             newButton = null;
             start = PAGE_SIZE + (page - 1) * PAGE_SIZE;
         }
-        int end = Math.min(shown.length, start + (page == 0 ? PAGE_SIZE : PAGE_SIZE));
+        int end = Math.min(shown.length, start + PAGE_SIZE);
         for (int i = start; i < end; i++) {
             final Note n = shown[i];
             String title = n.title.length() == 0 ? Strings.UNTITLED : n.title;
-            String label = Ui.fit(title, LABEL_MAX) + "   " + dateFmt.format(new Date(n.mtime));
+            String label = Ui.fit(title, LABEL_MAX) + "   ·   " + dateFmt.format(new Date(n.mtime));
             KButton b = new KButton(label);
-            applyFont(b, label);
             b.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
                     app.openNote(n.id);
@@ -175,34 +205,10 @@ public final class ListScreen extends Screen {
             pageButtons.add(b);
         }
         if (shown.length == 0) {
-            KLabel empty = new KLabel(query.length() > 0 ? Strings.NOTHING_FOUND : Strings.EMPTY);
-            applyFont(empty, empty.getText());
-            rows.add(empty);
-        }
-        // keep the grid height stable
-        for (int i = rows.getComponentCount(); i < PAGE_SIZE + 1; i++) {
-            rows.add(new KPanel());
-        }
-
-        status.setText(Strings.PAGE + " " + (page + 1) + "/" + pages + "   ·   " + Strings.PAGE_HINT);
-        Font sf = Ui.fontFor(status.getText(), 16);
-        if (sf != null) {
-            status.setFont(sf);
+            rows.add(new KLabel(query.length() > 0 ? Strings.NOTHING_FOUND : Strings.EMPTY));
         }
         validate();
         repaint();
-    }
-
-    private static void applyFont(Component c, String text) {
-        Font f = Ui.fontFor(text, 20);
-        if (f == null) {
-            return;
-        }
-        if (c instanceof KButton) {
-            ((KButton) c).setFont(f);
-        } else if (c instanceof KLabel) {
-            ((KLabel) c).setFont(f);
-        }
     }
 
     private void flip(int delta) {
@@ -219,7 +225,7 @@ public final class ListScreen extends Screen {
     private void focusFirst() {
         if (pageButtons.size() > 0) {
             ((Component) pageButtons.get(0)).requestFocus();
-        } else {
+        } else if (searchVisible) {
             search.requestFocus();
         }
     }
@@ -240,12 +246,12 @@ public final class ListScreen extends Screen {
         KMenuItem searchItem = new KMenuItem(Strings.SEARCH);
         searchItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                search.requestFocus();
+                showSearch();
             }
         });
         menu.add(searchItem);
 
-        if (query.length() > 0) {
+        if (query.length() > 0 || searchVisible) {
             KMenuItem clearItem = new KMenuItem(Strings.CLEAR_SEARCH);
             clearItem.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {

@@ -167,6 +167,18 @@ public final class NoteStore {
         }
     }
 
+    /** Modification time of a note, 0 when unknown. */
+    public long lastModified(String id) {
+        if (!validId(id) || !isAvailable()) {
+            return 0;
+        }
+        try {
+            return fileOf(id).lastModified();
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
     public String load(String id) {
         if (!validId(id) || !isAvailable()) {
             return null;

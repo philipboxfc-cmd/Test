@@ -7,7 +7,17 @@ public final class Strings {
     public static final String NEW_NOTE = "+ Новая заметка";             // + Новая заметка
     public static final String NEW_NOTE_MENU = "Новая заметка";         // Новая заметка
     public static final String SEARCH = "Поиск";                                                            // Поиск
-    public static final String SEARCH_HINT = "Поиск (Enter):";                                             // Поиск (Enter):
+    public static final String FIND = "Найти";                                                              // Найти
+    public static final String NOTE_FROM = "Заметка от";                                // Заметка от
+    public static final String HELP = "Список: джойстик выбирает заметку, "
+            + "клавиши страниц листают, "
+            + "буквы Q..P открывают строки 1..10.\n"
+            + "Редактор: первая строка - заголовок, "
+            + "Back - сохранить и выйти, Menu - действия.\n"
+            + "Текст сохраняется и при уходе в сон.";
+            // Список: джойстик выбирает заметку, клавиши страниц листают, буквы Q..P открывают строки 1..10.
+            // Редактор: первая строка - заголовок, Back - сохранить и выйти, Menu - действия.
+            // Текст сохраняется и при уходе в сон.
     public static final String CLEAR_SEARCH = "Все заметки";                       // Все заметки
     public static final String EMPTY = "Заметок пока нет. "
             + "Нажмите «+ Новая заметка» "

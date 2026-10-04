@@ -17,7 +17,7 @@ import com.amazon.kindle.kindlet.ui.KPanel;
  * KDK 1.0). Entry point named in the jar manifest (Main-Class).
  */
 public final class NotesKindlet extends AbstractKindlet {
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.1.0";
 
     private KindletContext context;
     private Log log;
@@ -44,11 +44,18 @@ public final class NotesKindlet extends AbstractKindlet {
             Ui.init(home);
             store = new NoteStore(home, log);
             menu = new KMenu();
+            // outer panel = margins, inner root = the current screen
             root = new KPanel(new BorderLayout());
+            KPanel outer = new KPanel(new BorderLayout());
+            outer.add(new Gap(Ui.MARGIN, Ui.MARGIN), BorderLayout.NORTH);
+            outer.add(new Gap(Ui.MARGIN, Ui.MARGIN), BorderLayout.SOUTH);
+            outer.add(new Gap(Ui.MARGIN, Ui.MARGIN), BorderLayout.WEST);
+            outer.add(new Gap(Ui.MARGIN, Ui.MARGIN), BorderLayout.EAST);
+            outer.add(root, BorderLayout.CENTER);
             Container rc = ctx.getRootContainer();
             rc.removeAll();
             rc.setLayout(new BorderLayout());
-            rc.add(root, BorderLayout.CENTER);
+            rc.add(outer, BorderLayout.CENTER);
             try {
                 ctx.setSubTitle(Strings.NOTES);
             } catch (Throwable t) {
@@ -189,7 +196,7 @@ public final class NotesKindlet extends AbstractKindlet {
     }
 
     public void openNew() {
-        editor = new EditorScreen(this, null, "");
+        editor = new EditorScreen(this, null, "", 0);
         show(editor);
     }
 
@@ -199,7 +206,7 @@ public final class NotesKindlet extends AbstractKindlet {
             showList();
             return;
         }
-        editor = new EditorScreen(this, id, body);
+        editor = new EditorScreen(this, id, body, store.lastModified(id));
         show(editor);
     }
 
@@ -219,7 +226,7 @@ public final class NotesKindlet extends AbstractKindlet {
     }
 
     public void showAbout() {
-        String msg = Strings.APP + " " + VERSION + "\n\n" + Strings.FOLDER + store.getDirPath()
+        String msg = Strings.APP + " " + VERSION + "\n\n" + Strings.HELP + "\n\n" + Strings.FOLDER + store.getDirPath()
                 + (store.isShared() ? Strings.SHARED_YES : Strings.SHARED_NO)
                 + "\n" + Strings.COUNT + store.list().length;
         showMessage(Strings.ABOUT, msg, new Runnable() {

@@ -1,27 +1,33 @@
 package org.kindlenotes;
 
+import java.awt.Component;
 import java.awt.Font;
 import java.io.File;
 
-/** Small UI helpers: fonts that can show Cyrillic, label shortening. */
+/**
+ * Small UI helpers. The Kindle's own UI font renders Cyrillic fine, so by
+ * default no font is ever substituted; "font.cfg" in the kindlet home dir
+ * can force the universal code2000 font ("code2000") or the old automatic
+ * behaviour ("auto") for firmware where the default font lacks glyphs.
+ */
 public final class Ui {
     private static final String UNICODE_FONT_FILE = "/usr/java/lib/fonts/code2000.ttf";
-    private static final int MODE_AUTO = 0;      // code2000 only for text with non-Latin characters
-    private static final int MODE_DEFAULT = 1;   // never touch fonts (Kindle default font everywhere)
+    private static final int MODE_DEFAULT = 0;   // never touch fonts (Kindle default font everywhere)
+    private static final int MODE_AUTO = 1;      // code2000 only for text with non-Latin characters
     private static final int MODE_UNICODE = 2;   // code2000 for every text
     private static Boolean unicodeFontPresent;
-    private static int mode = MODE_AUTO;
+    private static int mode = MODE_DEFAULT;
+
+    /** Side margin, so text never touches the screen edge. */
+    public static final int MARGIN = 10;
+    /** Vertical gap between rows. */
+    public static final int ROW_GAP = 6;
 
     private Ui() {
     }
 
-    /**
-     * Optional override in the kindlet home directory, file "font.cfg" with
-     * one word: "auto" (default), "default" or "code2000". Lets the user pick
-     * the Kindle's own font if it renders Cyrillic fine on their firmware.
-     */
     public static void init(File homeDir) {
-        mode = MODE_AUTO;
+        mode = MODE_DEFAULT;
         if (homeDir == null) {
             return;
         }
@@ -37,13 +43,13 @@ public final class Ui {
                 return;
             }
             line = line.trim().toLowerCase();
-            if (line.startsWith("default")) {
-                mode = MODE_DEFAULT;
+            if (line.startsWith("auto")) {
+                mode = MODE_AUTO;
             } else if (line.startsWith("code2000") || line.startsWith("unicode")) {
                 mode = MODE_UNICODE;
             }
         } catch (Throwable t) {
-            mode = MODE_AUTO;
+            mode = MODE_DEFAULT;
         } finally {
             if (r != null) {
                 try {
@@ -80,10 +86,7 @@ public final class Ui {
         return false;
     }
 
-    /**
-     * The Kindle's default Java fonts may lack Cyrillic glyphs; code2000 has
-     * them all. Returns null when the component's own font is fine.
-     */
+    /** Returns a replacement font for the text, or null to keep the component's own. */
     public static Font fontFor(String text, int size) {
         if (mode == MODE_DEFAULT || !hasUnicodeFont()) {
             return null;
@@ -92,6 +95,19 @@ public final class Ui {
             return new Font("code2000", Font.PLAIN, size);
         }
         return null;
+    }
+
+    /** The component's own font family in bold at the given size (null when unknown). */
+    public static Font bold(Component c, int size) {
+        try {
+            Font base = c.getFont();
+            if (base == null) {
+                return null;
+            }
+            return new Font(base.getName(), Font.BOLD, size);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     public static String fit(String s, int max) {

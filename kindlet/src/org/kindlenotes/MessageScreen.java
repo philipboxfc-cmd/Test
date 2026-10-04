@@ -1,6 +1,7 @@
 package org.kindlenotes;
 
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -25,21 +26,25 @@ public final class MessageScreen extends Screen {
      */
     public MessageScreen(NotesKindlet app, String title, String text, String primaryLabel,
                          Runnable onPrimary, String secondaryLabel, Runnable onSecondary) {
-        super(app, new BorderLayout(8, 8));
+        super(app, new BorderLayout(0, Ui.ROW_GAP * 2));
         this.onPrimary = onPrimary;
         this.onSecondary = onSecondary;
 
         KLabel head = new KLabel(title);
+        Font bold = Ui.bold(head, 22);
+        if (bold != null) {
+            head.setFont(bold);
+        }
         add(head, BorderLayout.NORTH);
 
         KLabelMultiline body = new KLabelMultiline(text);
-        java.awt.Font f = Ui.fontFor(text, 20);
+        Font f = Ui.fontFor(text, 20);
         if (f != null) {
             body.setFont(f);
         }
         add(body, BorderLayout.CENTER);
 
-        KPanel buttons = new KPanel(new GridLayout(1, secondaryLabel == null ? 1 : 2, 8, 8));
+        KPanel buttons = new KPanel(new GridLayout(1, secondaryLabel == null ? 1 : 2, 8, 0));
         primary = new KButton(primaryLabel);
         primary.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {

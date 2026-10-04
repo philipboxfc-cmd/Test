@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Main-Class: org.kindlenotes.NotesKindlet
 Implementation-Title: KindleNotes
-Implementation-Version: 1.0.0
+Implementation-Version: 1.1.0
 Implementation-Vendor: KindleNotes
 Extension-List: SDK
 SDK-Extension-Name: com.amazon.kindle.kindlet
