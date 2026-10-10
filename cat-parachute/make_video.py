@@ -31,12 +31,13 @@ T_APEX = 3.4       # верхняя точка
 T_POP = 3.55       # появляется коробка
 T_DESC0 = 3.9      # начало спуска
 T_LAND = 12.4      # коробка касается кровати
-T_IMPACT = T_LAND + 0.3  # кот плюхается на место
+T_IMPACT = T_LAND  # кот и коробка касаются кровати одновременно
 APEX = 3200.0      # высота подъёма в пикселях мира
 
-GAP = 80           # расстояние от кота до коробки (стропы)
-BOX_W, BOX_H = 150, 120
-GROUND_Y = 1000    # мировая y, где коробка касается кровати
+BOX_W, BOX_H = 280, 160
+BOX_TOP_REST = 850     # верх коробки прямо под кончиками лап (мировая y)
+BOX_CX_REST = 447      # центр коробки по x — под лапами
+GROUND_Y = BOX_TOP_REST + BOX_H  # низ коробки в покое
 FOLLOW_Y = 380     # камера держит центр кота на этой высоте экрана
 
 random.seed(7)
@@ -70,14 +71,8 @@ CAT_W, CAT_H = CAT.size
 CAT_REST_CX = crop_box[0] + CAT_W / 2.0
 CAT_REST_CY = crop_box[1] + CAT_H / 2.0
 CAT_BOTTOM_REST = bbox[3]
-# точки крепления строп (в координатах вырезанного кота)
-ATTACH = [
-    (200 - crop_box[0], 680 - crop_box[1]),   # подбородок
-    (440 - crop_box[0], 850 - crop_box[1]),   # передние лапы
-    (560 - crop_box[0], 692 - crop_box[1]),   # задняя лапа
-]
-D_BOX = CAT_H / 2.0 + GAP + BOX_H / 2.0          # центр коробки ниже центра кота
-LAND_REL = (GROUND_Y - BOX_H - GAP) - CAT_BOTTOM_REST  # rel_y кота в момент касания коробки
+# смещение центра коробки от центра кота: кот держит её лапами
+BOX_OFF = (BOX_CX_REST - CAT_REST_CX, BOX_TOP_REST + BOX_H / 2.0 - CAT_REST_CY)
 
 bed = Image.open(os.path.join(ASSETS, "bed_empty.jpg")).convert("RGB").resize((W, H), Image.LANCZOS)
 
@@ -90,19 +85,19 @@ def make_box():
     edge = (110, 80, 45)
     d.rectangle([0, 0, BOX_W - 1, BOX_H - 1], fill=front, outline=edge, width=3)
     # верхние створки
-    d.polygon([(2, 2), (BOX_W - 3, 2), (BOX_W - 20, 22), (20, 22)], fill=dark, outline=edge)
-    d.line([(BOX_W // 2, 2), (BOX_W // 2, 22)], fill=edge, width=2)
+    d.polygon([(2, 2), (BOX_W - 3, 2), (BOX_W - 30, 28), (30, 28)], fill=dark, outline=edge)
+    d.line([(BOX_W // 2, 2), (BOX_W // 2, 28)], fill=edge, width=2)
     # скотч
-    d.rectangle([BOX_W // 2 - 9, 2, BOX_W // 2 + 9, BOX_H - 3], fill=(226, 204, 160))
+    d.rectangle([BOX_W // 2 - 13, 2, BOX_W // 2 + 13, BOX_H - 3], fill=(226, 204, 160))
     # стрелки "верх" и надпись
-    for x in (28, BOX_W - 28):
-        d.polygon([(x, 42), (x - 11, 58), (x + 11, 58)], fill=edge)
-        d.rectangle([x - 4, 58, x + 4, 76], fill=edge)
+    for x in (46, BOX_W - 46):
+        d.polygon([(x, 54), (x - 15, 76), (x + 15, 76)], fill=edge)
+        d.rectangle([x - 6, 76, x + 6, 102], fill=edge)
     try:
-        font = ImageFont.load_default(size=24)
+        font = ImageFont.load_default(size=34)
     except TypeError:
         font = ImageFont.load_default()
-    d.text((BOX_W // 2, 95), "КОТ", fill=edge, font=font, anchor="mm")
+    d.text((BOX_W // 2, int(BOX_H * 0.72)), "КОТ", fill=edge, font=font, anchor="mm")
     return img
 
 
@@ -202,10 +197,7 @@ def rel_y(t):
         return -APEX - 30 * math.sin(math.pi * u)
     if t < T_LAND:
         u = (t - T_DESC0) / (T_LAND - T_DESC0)
-        return -APEX + (APEX + LAND_REL) * float(np.interp(u, _DU, _DS))
-    if t < T_IMPACT:
-        u = (t - T_LAND) / (T_IMPACT - T_LAND)
-        return LAND_REL * (1 - u * u)
+        return -APEX + APEX * float(np.interp(u, _DU, _DS))
     return 0.0
 
 
@@ -361,8 +353,8 @@ def render_frame(t):
 
     # пыль при старте и посадке
     draw_puff(frame, CAT_REST_CX, CAT_BOTTOM_REST - 10, (t - T_LAUNCH) / 0.9, 260, cam_y)
-    draw_puff(frame, CAT_REST_CX, GROUND_Y - 6, (t - T_LAND) / 0.7, 170, cam_y)
-    draw_puff(frame, CAT_REST_CX, CAT_BOTTOM_REST - 10, (t - T_IMPACT) / 0.6, 150, cam_y)
+    draw_puff(frame, BOX_CX_REST, GROUND_Y - 6, (t - T_LAND) / 0.7, 230, cam_y)
+    draw_puff(frame, CAT_REST_CX - 60, CAT_BOTTOM_REST - 60, (t - T_IMPACT - 0.05) / 0.6, 150, cam_y)
 
     # линии скорости при быстром подъёме
     speed = abs(vy)
@@ -389,38 +381,21 @@ def render_frame(t):
     sw, sh = sprite.size
     px, py = cx - sw / 2.0, draw_cy - sh / 2.0 - cam_y
 
-    # коробка и стропы
+    # коробка: кот держит её лапами, она поворачивается вместе с ним (рисуется под котом)
     bs = box_scale(t)
     if bs > 0:
-        if t <= T_LAND:
-            bang = box_angle(t)
-            dx, dy = rot(0, D_BOX, bang * 0.5 + ang * 0.5)
-            bx, by = cx + dx, cy + dy
-        else:
-            bang = 0.0
-            bx, by = CAT_REST_CX, GROUND_Y - BOX_H / 2.0
+        bang = ang + (box_angle(t) - ang) * 0.25   # чуть запаздывает за котом
+        # при появлении коробка "выдвигается" из-под лап
+        offx, offy = BOX_OFF[0], BOX_OFF[1] - (1 - min(1.0, bs)) * BOX_H * 0.5
+        dx, dy = rot(offx, offy, ang)
+        bx, by = cx + dx, cy + dy
         bsx, bsy = box_squash(t)
+        if bsy < 1:   # при посадке сплющивается с опорой на низ
+            by += BOX_H * (1 - bsy) / 2.0
         bw, bh = max(1, int(BOX_W * bs * bsx)), max(1, int(BOX_H * bs * bsy))
         box_img = BOX.resize((bw, bh), Image.BICUBIC)
         if abs(bang) > 1e-3:
             box_img = box_img.rotate(bang, resample=Image.BICUBIC, expand=True)
-        # стропы
-        od = ImageDraw.Draw(frame, "RGBA")
-        corners = [(-BOX_W * 0.45, -BOX_H / 2.0 * bsy), (0, -BOX_H / 2.0 * bsy), (BOX_W * 0.45, -BOX_H / 2.0 * bsy)]
-        for (ax, ay), (kx, ky) in zip(ATTACH, corners):
-            adx, ady = rot(ax - CAT_W / 2.0, ay - CAT_H / 2.0, ang)
-            p0 = (cx + adx, cy + ady - cam_y)
-            kdx, kdy = rot(kx * bs, ky * bs, bang)
-            p2 = (bx + kdx, by + kdy - cam_y)
-            dist = math.hypot(p2[0] - p0[0], p2[1] - p0[1])
-            # длина стропы в покое (без поворотов): от точки крепления до угла коробки
-            ax0, ay0 = ax - CAT_W / 2.0, ay - CAT_H / 2.0
-            rest_len = math.hypot(kx - ax0, (D_BOX + ky) - ay0)
-            sag = 4.0 + max(0.0, rest_len - dist) * 0.9
-            mid = ((p0[0] + p2[0]) / 2, (p0[1] + p2[1]) / 2 + sag)
-            pts = bezier(p0, mid, p2)
-            od.line(pts, fill=(70, 58, 48, 230), width=4, joint="curve")
-            od.line(pts, fill=(190, 170, 140, 160), width=1)
         frame.alpha_composite(box_img, (int(bx - box_img.width / 2.0), int(by - box_img.height / 2.0 - cam_y)))
 
     # размытие движения (шлейф) при большой скорости
@@ -527,7 +502,7 @@ def make_audio():
         return s
 
     place(mix, thud(0.45, 130, 55, 500, 0.8), T_LAND, 0.9)
-    place(mix, thud(0.4, 90, 45, 260, 1.4), T_IMPACT, 0.75)
+    place(mix, thud(0.4, 90, 45, 260, 1.4), T_IMPACT + 0.06, 0.75)
     # лёгкое "фр-р" от покрывала
     Lf = int(0.3 * SR)
     fl = onepole_lp(np.random.uniform(-1, 1, Lf), 1800) * env_ad(Lf, 0.02, 0.09, 2)
