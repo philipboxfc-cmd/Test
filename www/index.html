@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161c">
+<title>Аккорды по функциям</title>
+<style>
+:root{
+  --bg:#f4f5f8; --card:#ffffff; --fg:#1b1d24; --muted:#6b7080; --line:#e2e4ea;
+  --accent:#3b6cf6; --accent-fg:#fff; --rec:#e5484d; --ok:#2f9e6b; --chip:#eef1fb;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161c; --card:#1d2029; --fg:#eceef3; --muted:#9097a8; --line:#2b2f3b;
+    --accent:#6b8fff; --accent-fg:#0d1020; --rec:#ff5c61; --ok:#4cc38a; --chip:#262b3a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161c; --card:#1d2029; --fg:#eceef3; --muted:#9097a8; --line:#2b2f3b;
+  --accent:#6b8fff; --accent-fg:#0d1020; --rec:#ff5c61; --ok:#4cc38a; --chip:#262b3a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px 16px 120px;
+  padding-top:max(16px,env(safe-area-inset-top))}
+h1{font-size:18px;margin:0 0 12px;font-weight:650}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.keyrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.keyname{font-size:26px;font-weight:700;flex:1;min-width:150px}
+.keyname small{display:block;font-size:13px;color:var(--muted);font-weight:500}
+button{font:inherit;border:0;border-radius:12px;padding:10px 14px;cursor:pointer;
+  background:var(--chip);color:var(--fg)}
+button.primary{background:var(--accent);color:var(--accent-fg);font-weight:600}
+button:disabled{opacity:.45}
+.picker{display:none;margin-top:12px}
+.picker.open{display:block}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid button{padding:10px 4px;font-size:14px}
+.grid button.sel,.seg button.sel{background:var(--accent);color:var(--accent-fg)}
+.seg{display:flex;gap:6px;margin-top:8px}
+.seg button{flex:1}
+.recwrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0}
+.recbtn{width:112px;height:112px;border-radius:50%;background:var(--rec);color:#fff;
+  font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(229,72,77,.35)}
+.recbtn.on{animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(229,72,77,.55)}100%{box-shadow:0 0 0 22px rgba(229,72,77,0)}}
+.meter{width:100%;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter div{height:100%;width:0;background:var(--ok);transition:width .08s}
+.live{text-align:center;min-height:64px}
+.live .fn{font-size:40px;font-weight:800;line-height:1.1}
+.live .nm{color:var(--muted);font-size:14px}
+.tokens{display:flex;flex-wrap:wrap;gap:6px;min-height:36px}
+.tok{background:var(--chip);border-radius:10px;padding:6px 10px;font-weight:700;font-size:18px;
+  display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.tok small{font-weight:500;font-size:11px;color:var(--muted)}
+.tok.cad{background:transparent;border:1px dashed var(--ok);color:var(--ok);font-size:13px;font-weight:600;justify-content:center}
+.line{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;margin-top:10px;
+  padding:10px;border-radius:10px;background:var(--bg);word-break:break-word;min-height:40px}
+.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.hist .item{border-top:1px solid var(--line);padding:10px 0}
+.hist .item:first-of-type{border-top:0}
+.hist .k{font-weight:650}
+.hist .l{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;color:var(--muted);word-break:break-word}
+.fab{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));width:64px;height:64px;
+  border-radius:50%;font-size:34px;line-height:1;background:var(--accent);color:var(--accent-fg);
+  box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--fg);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+.settings{font-size:14px;color:var(--muted)}
+.settings input{width:100%}
+details summary{cursor:pointer;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Аккорды по функциям</h1>
+
+  <section class="card">
+    <div class="label">Тональность</div>
+    <div class="keyrow">
+      <div class="keyname" id="keyName">не выбрана<small>скажите или выберите вручную</small></div>
+      <button class="primary" id="voiceBtn">🎤 Сказать</button>
+      <button id="manualBtn">Вручную</button>
+    </div>
+    <div class="picker" id="picker">
+      <div class="grid" id="tonicGrid"></div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="0">мажор</button>
+        <button data-mode="1">минор</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="recwrap">
+      <button class="recbtn" id="recBtn" disabled>● Запись</button>
+      <div class="meter"><div id="meter"></div></div>
+      <div class="live"><div class="fn" id="liveFn">—</div><div class="nm" id="liveName">&nbsp;</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="label">Анализ</div>
+    <div class="tokens" id="tokens"></div>
+    <div class="line" id="line"></div>
+    <div class="actions">
+      <button id="copyBtn">Копировать</button>
+      <button id="undoBtn">Удалить последний</button>
+    </div>
+  </section>
+
+  <section class="card hist" id="histCard" hidden>
+    <div class="label">Предыдущие записи</div>
+    <div id="hist"></div>
+    <div class="actions"><button id="clearHist">Очистить</button></div>
+  </section>
+
+  <details class="card settings">
+    <summary>Настройки</summary>
+    <p>Порог тишины: <span id="thrVal"></span>
+      <input type="range" id="thr" min="1" max="40" value="6"></p>
+    <p>Минимальная длина аккорда: <span id="minVal"></span>
+      <input type="range" id="minLen" min="2" max="10" value="3"></p>
+  </details>
+</main>
+
+<button class="fab" id="plusBtn" title="Новая запись">+</button>
+<div class="toast" id="toast"></div>
+
+<script src="capacitor.js"></script>
+<script>
+'use strict';
+// ---------- музыкальная теория ----------
+const NOTE_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_FLAT =['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const RU_MAJOR=['до','ре-бемоль','ре','ми-бемоль','ми','фа','фа-диез','соль','ля-бемоль','ля','си-бемоль','си'];
+const RU_MINOR=['до','до-диез','ре','ми-бемоль','ми','фа','фа-диез','соль','соль-диез','ля','си-бемоль','си'];
+const GRID_NAMES=['до','до♯/ре♭','ре','ми♭','ми','фа','фа♯','соль','ля♭/соль♯','ля','си♭','си'];
+const FLAT_MAJOR=new Set([1,3,5,8,10]), FLAT_MINOR=new Set([0,2,3,5,7,10]);
+
+const TYPES={
+  maj:  {iv:[0,4,7],    sfx:''},
+  min:  {iv:[0,3,7],    sfx:'m'},
+  dim:  {iv:[0,3,6],    sfx:'dim'},
+  dom7: {iv:[0,4,7,10], sfx:'7'},
+  maj7: {iv:[0,4,7,11], sfx:'maj7'},
+  min7: {iv:[0,3,7,10], sfx:'m7'},
+  hdim7:{iv:[0,3,6,10], sfx:'m7b5'},
+  dim7: {iv:[0,3,6,9],  sfx:'dim7'},
+};
+const TONE_W=[1,1,.8,.9]; // прима, терция, квинта, септима
+for(const t of Object.values(TYPES)){
+  t.sev=t.iv.length===4;
+  t.vec=new Float32Array(12);
+  t.iv.forEach((s,i)=>t.vec[s]=TONE_W[i]);
+  t.norm=Math.hypot(...t.vec);
+}
+
+// ступень от тоники : тип -> [функция, вес априорной вероятности]
+const FUNC={
+  major:{
+    '0:maj':['T',1.12],'0:maj7':['T7',1.0],
+    '2:min':['SII',1.08],'2:min7':['SII7',1.06],
+    '4:min':['III',1.03],
+    '5:maj':['S',1.12],'5:maj7':['S7',1.0],'5:min':['s',1.02],
+    '7:maj':['D',1.12],'7:dom7':['D7',1.12],
+    '9:min':['VI',1.08],'9:min7':['VI7',1.0],
+    '11:dim':['VII',1.04],'11:hdim7':['VII7',1.05],'11:dim7':['VII7',1.03],
+  },
+  minor:{
+    '0:min':['t',1.12],'0:maj':['T',1.0],
+    '2:dim':['sII',1.06],'2:hdim7':['sII7',1.06],
+    '3:maj':['III',1.04],
+    '5:min':['s',1.12],'5:min7':['s7',1.03],'5:maj':['S',1.02],
+    '7:maj':['D',1.12],'7:dom7':['D7',1.12],'7:min':['d',1.03],
+    '8:maj':['VI',1.08],'8:maj7':['VI7',1.0],
+    '10:maj':['VIIн',1.03],
+    '11:dim':['VII',1.04],'11:dim7':['VII7',1.06],
+  }
+};
+
+let key=null; // {tonic, minor}
+const useFlats=k=>k&&(k.minor?FLAT_MINOR:FLAT_MAJOR).has(k.tonic);
+const noteName=pc=>(useFlats(key)?NOTE_FLAT:NOTE_SHARP)[pc];
+const keyRu=k=>(k.minor?RU_MINOR:RU_MAJOR)[k.tonic]+(k.minor?' минор':' мажор');
+const keyLat=k=>{const n=(useFlats(k)?NOTE_FLAT:NOTE_SHARP)[k.tonic];
+  return k.minor?n.toLowerCase().replace('b','es').replace('#','is')+'-moll':n.replace('b','es').replace('#','is')+'-dur';};
+
+function prior(root,type){
+  if(!key) return 1;
+  const e=FUNC[key.minor?'minor':'major'][((root-key.tonic+12)%12)+':'+type];
+  return e?e[1]:1;
+}
+
+// Подбор аккорда по хромаграмме
+function classify(ch){
+  const n=Math.hypot(...ch); if(n<=0) return null;
+  let best=null;
+  for(let r=0;r<12;r++) for(const [tn,t] of Object.entries(TYPES)){
+    let d=0; for(const s of t.iv) d+=ch[(r+s)%12]*t.vec[s];
+    let sc=d/(n*t.norm);
+    if(t.sev) sc*=0.96;
+    sc*=prior(r,tn);
+    if(!best||sc>best.score) best={root:r,type:tn,score:sc,id:r+':'+tn};
+  }
+  return best;
+}
+
+// Функция + обращение
+function describe(c){
+  const t=TYPES[c.type];
+  const rel=(c.root-key.tonic+12)%12;
+  const map=FUNC[key.minor?'minor':'major'];
+  let fn=map[rel+':'+c.type]?.[0], target='';
+  const bi=c.bass==null?0:(c.bass-c.root+12)%12;
+  const pos=t.iv.indexOf(bi); // 0 прима,1 терция,2 квинта,3 септима
+  let fig;
+  if(t.sev) fig=['7','65','43','2'][Math.max(pos,0)];
+  else fig=['53','6','64'][Math.max(pos,0)];
+  if(!fn && (c.type==='maj'||c.type==='dom7')){
+    // побочная доминанта: D к ступени на кварту выше
+    const tr=(c.root+5)%12, trel=(tr-key.tonic+12)%12;
+    const hit=Object.entries(map).find(([k])=>k.startsWith(trel+':')&&!k.includes('7'));
+    if(hit){ target='→'+hit[1][0]; fn='D'; }
+  }
+  const label=fn?fn.replace(/7$/,'')+fig+target:'?';
+  const name=noteName(c.root)+t.sfx+(pos>0?'/'+noteName(c.bass):'');
+  return {fn:fn||'?',label,name,fig,group:groupOf(fn,rel,target)};
+}
+function groupOf(fn,rel,target){
+  if(!fn||target) return '';
+  if(/^[Tt]/.test(fn)) return 'T';
+  if(/^[Ss]/.test(fn)) return 'S';
+  if(/^D/.test(fn)||(fn.startsWith('VII')&&fn!=='VIIн')) return 'D';
+  if(fn.startsWith('VI')) return 'VI';
+  return '';
+}
+
+// Кадансы и K64
+function analyzeSequence(chords){
+  const items=chords.map(c=>({...c,...describe(c)}));
+  for(let i=0;i<items.length-1;i++){
+    const a=items[i], b=items[i+1];
+    if(a.group==='T'&&a.fig==='64'&&b.group==='D'&&(b.fn==='D'||b.fn==='D7')){
+      a.label='K64'; a.group='K';
+    }
+  }
+  const out=[];
+  items.forEach((c,i)=>{
+    out.push({kind:'chord',...c,idx:i});
+    const p=items[i-1]; if(!p) return;
+    const pd=p.group==='D'||p.group==='K';
+    let cad=null;
+    if(pd&&c.group==='T'&&c.fig==='53'){
+      cad=(p.fig==='53'||p.fig==='7')&&!p.fn.startsWith('VII')?'автентический каданс':'несовершенный каданс';
+    } else if(pd&&c.group==='T') cad='несовершенный каданс';
+    else if(p.group==='S'&&c.group==='T'&&c.fig==='53') cad='плагальный каданс';
+    else if(pd&&c.group==='VI') cad='прерванный каданс';
+    if(cad) out.push({kind:'cad',label:cad});
+  });
+  const last=items[items.length-1];
+  if(items.length>1&&last&&last.group==='D'&&!recording) out.push({kind:'cad',label:'половинный каданс'});
+  return out;
+}
+
+// ---------- распознавание тональности из речи ----------
+function parseKey(text){
+  let s=' '+text.toLowerCase().replace(/ё/g,'е').replace(/[-–—,.!?]/g,' ').replace(/\s+/g,' ')+' ';
+  const ru=[['до',0],['ре',2],['ми',4],['фа',5],['соль',7],['соли',7],['ля',9],['си',11]];
+  let tonic=null, m;
+  // русские названия
+  m=s.match(/ (до|ре|ми|фа|соль|соли|ля|си) ?(диез|дьез|бемоль|бимоль)?/);
+  if(m){
+    tonic=ru.find(x=>x[0]===m[1])[1];
+    if(m[2]) tonic=(tonic+(m[2].startsWith('д')?1:11))%12;
+  } else {
+    // латиница: "d minor", "Dm", "f# major", "bb", "es-dur"
+    m=s.match(/ ([a-h])( ?(#|sharp|is|диез)| ?(b|flat|es|s|бемоль))?(m)?\b/);
+    if(m){
+      tonic={c:0,d:2,e:4,f:5,g:7,a:9,b:11,h:11}[m[1]];
+      if(m[3]) tonic=(tonic+1)%12;
+      else if(m[4]) tonic=(m[1]==='b'&&m[4]==='es'||m[1]==='h'&&m[4]==='s')?10:(tonic+11)%12;
+      if(m[5]) return {tonic,minor:true};
+    }
+  }
+  if(tonic==null) return null;
+  const minor=/(минор|миноре|minor|moll|мол)/.test(s);
+  return {tonic,minor};
+}
+
+// ---------- UI ----------
+const $=id=>document.getElementById(id);
+const toast=(msg,ms=2200)=>{const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),ms);};
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+let chords=[]; // финальные аккорды текущей записи
+let history=store.get('akk_hist',[]);
+let recording=false;
+
+function setKey(k){
+  key=k;
+  $('keyName').innerHTML=keyRu(k)+'<small>'+keyLat(k)+'</small>';
+  $('recBtn').disabled=false;
+  [...$('tonicGrid').children].forEach((b,i)=>b.classList.toggle('sel',i===k.tonic));
+  [...$('modeSeg').children].forEach(b=>b.classList.toggle('sel',+b.dataset.mode===(k.minor?1:0)));
+  store.set('akk_key',k);
+  render();
+}
+
+GRID_NAMES.forEach((n,i)=>{
+  const b=document.createElement('button');b.textContent=n;
+  b.onclick=()=>setKey({tonic:i,minor:key?key.minor:false});
+  $('tonicGrid').appendChild(b);
+});
+[...$('modeSeg').children].forEach(b=>b.onclick=()=>setKey({tonic:key?key.tonic:0,minor:b.dataset.mode==='1'}));
+$('manualBtn').onclick=()=>$('picker').classList.toggle('open');
+
+function render(){
+  const tok=$('tokens'); tok.innerHTML='';
+  if(!key){$('line').textContent='';return;}
+  const seq=analyzeSequence(chords);
+  for(const it of seq){
+    const d=document.createElement('div');
+    if(it.kind==='cad'){d.className='tok cad';d.textContent=it.label;}
+    else{d.className='tok';d.innerHTML=it.label+'<small>'+it.name+'</small>';
+      d.onclick=()=>{if(confirm('Удалить '+it.label+' ('+it.name+')?')){chords.splice(it.idx,1);render();}};}
+    tok.appendChild(d);
+  }
+  $('line').textContent=lineText(seq);
+}
+const lineText=seq=>seq.map(i=>i.kind==='cad'?'‖ '+i.label:i.label).join(' ');
+
+function renderHist(){
+  $('histCard').hidden=!history.length;
+  $('hist').innerHTML='';
+  for(const h of history){
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML='<div class="k"></div><div class="l"></div>';
+    d.querySelector('.k').textContent=h.key+' · '+h.time;
+    d.querySelector('.l').textContent=h.line;
+    $('hist').appendChild(d);
+  }
+}
+
+$('copyBtn').onclick=async()=>{
+  const txt=(key?keyRu(key)+': ':'')+$('line').textContent;
+  try{await navigator.clipboard.writeText(txt);toast('Скопировано');}
+  catch(e){toast(txt,4000);}
+};
+$('undoBtn').onclick=()=>{chords.pop();render();};
+$('clearHist').onclick=()=>{if(confirm('Очистить историю?')){history=[];store.set('akk_hist',history);renderHist();}};
+
+// ---------- голосовой ввод тональности ----------
+const capSpeech=()=>{
+  const C=window.Capacitor;
+  if(!C||!C.isNativePlatform||!C.isNativePlatform()) return null;
+  if(!capSpeech.p){
+    const reg=(window.capacitorExports&&window.capacitorExports.registerPlugin)||C.registerPlugin;
+    capSpeech.p=reg?reg('SpeechRecognition'):C.Plugins&&C.Plugins.SpeechRecognition;
+  }
+  return capSpeech.p;
+};
+async function listenKey(){
+  if(recording) await stopRec();
+  const btn=$('voiceBtn'); btn.disabled=true; btn.textContent='🎤 Слушаю…';
+  try{
+    const texts=await recognize();
+    for(const t of texts){
+      const k=parseKey(t);
+      if(k){setKey(k);toast('Тональность: '+keyRu(k));return true;}
+    }
+    toast('Не понял: «'+(texts[0]||'')+'». Скажите, например, «ре минор»',3500);
+    $('picker').classList.add('open');
+  }catch(e){
+    toast('Голосовой ввод недоступен: '+(e.message||e)+'. Выберите вручную',3500);
+    $('picker').classList.add('open');
+  }finally{btn.disabled=false;btn.textContent='🎤 Сказать';}
+  return false;
+}
+// Фразы для офлайн-распознавания: модель выбирает только из них
+const KEY_PHRASES=(()=>{
+  const t=['до','до диез','ре бемоль','ре','ре диез','ми бемоль','ми','фа','фа диез','соль бемоль','соль',
+    'соль диез','ля бемоль','ля','ля диез','си бемоль','си'];
+  const out=[];
+  for(const n of t){out.push(n+' мажор',n+' минор');}
+  return JSON.stringify([...out,'[unk]']);
+})();
+const capVosk=()=>{
+  const C=window.Capacitor;
+  if(!C||!C.isNativePlatform||!C.isNativePlatform()) return null;
+  if(!capVosk.p){
+    const reg=(window.capacitorExports&&window.capacitorExports.registerPlugin)||C.registerPlugin;
+    capVosk.p=reg&&reg('Vosk');
+  }
+  return capVosk.p;
+};
+async function recognize(){
+  const vk=capVosk();
+  if(vk){
+    try{
+      toast('Говорите: например, «ре минор»',4000);
+      const r=await vk.start({grammar:KEY_PHRASES,timeout:7000});
+      return r.matches||[];
+    }catch(e){
+      console.warn('Vosk:',e);
+      if(!capSpeech()) throw e;
+      toast('Офлайн-распознавание: '+(e.message||e)+'. Пробую системное…',3000);
+    }
+  }
+  const sp=capSpeech();
+  if(sp){
+    const av=await sp.available(); if(!av.available) throw new Error('нет сервиса распознавания');
+    const p=await sp.requestPermissions?.();
+    if(p&&p.speechRecognition&&p.speechRecognition!=='granted') throw new Error('нет разрешения');
+    toast('Говорите: например, «ре минор»',4000);
+    // popup:false — встроенный SpeechRecognizer; системное окно Google есть не на всех телефонах
+    const r=await Promise.race([
+      sp.start({language:'ru-RU',maxResults:5,partialResults:false,popup:false}),
+      new Promise((_,rej)=>setTimeout(()=>{sp.stop().catch(()=>{});rej(new Error('нет ответа'));},12000))
+    ]);
+    return r.matches||[];
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) throw new Error('браузер не поддерживает');
+  return new Promise((res,rej)=>{
+    const r=new SR(); r.lang='ru-RU'; r.maxAlternatives=5; r.interimResults=false;
+    let done=false;
+    r.onresult=e=>{done=true;res([...e.results[0]].map(a=>a.transcript));};
+    r.onerror=e=>{done=true;rej(new Error(e.error));};
+    r.onend=()=>{if(!done)res([]);};
+    r.start();
+  });
+}
+$('voiceBtn').onclick=listenKey;
+
+// ---------- запись и анализ звука ----------
+let ctx,analyser,stream,src,timer,fbuf,tbuf;
+let seg=null,pend=null,silent=0,live=null;
+const CHANGE_FRAMES=3, SILENCE_FRAMES=3;
+let THR=0.006, MIN_FRAMES=3;
+
+function frameFeatures(){
+  analyser.getFloatFrequencyData(fbuf);
+  analyser.getFloatTimeDomainData(tbuf);
+  let rms=0; for(const v of tbuf) rms+=v*v; rms=Math.sqrt(rms/tbuf.length);
+  const hz=ctx.sampleRate/analyser.fftSize;
+  const k0=Math.floor(60/hz), k1=Math.min(fbuf.length-2,Math.ceil(5000/hz));
+  let mx=-Infinity; for(let k=k0;k<=k1;k++) if(fbuf[k]>mx) mx=fbuf[k];
+  const floor=mx-40; // пики не тише -40 дБ от максимума
+  const ch=new Float32Array(12);
+  const bassPeaks=[];
+  for(let k=k0;k<=k1;k++){
+    const b=fbuf[k]; if(b<floor||b<=fbuf[k-1]||b<fbuf[k+1]) continue;
+    const a=fbuf[k-1], c=fbuf[k+1], den=a-2*b+c;
+    const p=den?0.5*(a-c)/den:0;
+    const f=(k+p)*hz;
+    const midi=69+12*Math.log2(f/440), nr=Math.round(midi);
+    if(Math.abs(midi-nr)>0.4) continue;
+    const mag=Math.pow(10,(b-mx)/20);
+    const pc=((nr%12)+12)%12;
+    if(f>=80) ch[pc]+=Math.pow(mag,0.7)*(f<1200?1:1200/f);
+    if(f<=330) bassPeaks.push([f,mag,pc]);
+  }
+  let bass=null;
+  if(bassPeaks.length){
+    const bm=Math.max(...bassPeaks.map(x=>x[1]));
+    if(bm>0.08){ const lo=bassPeaks.find(x=>x[1]>=bm*0.3); bass=lo[2]; }
+  }
+  return {rms,ch,bass};
+}
+
+function newSeg(id,ch,bass){
+  const s={id,n:0,ch:new Float32Array(12),bv:new Float32Array(12)};
+  addTo(s,ch,bass); return s;
+}
+function addTo(s,ch,bass){
+  const n=Math.hypot(...ch)||1;
+  for(let i=0;i<12;i++) s.ch[i]+=ch[i]/n;
+  if(bass!=null) s.bv[bass]+=1;
+  s.n++;
+}
+function finalize(s){
+  if(!s||s.n<MIN_FRAMES) return;
+  const c=classify(s.ch); if(!c) return;
+  const tones=TYPES[c.type].iv.map(x=>(c.root+x)%12);
+  const tot=s.bv.reduce((a,b)=>a+b,0);
+  let bass=c.root;
+  if(tot>0){
+    let bp=-1,bvv=-1; for(const t of tones) if(s.bv[t]>bvv){bvv=s.bv[t];bp=t;}
+    if(bvv>=tot*0.4) bass=bp;
+  }
+  const chord={root:c.root,type:c.type,bass};
+  const prev=chords[chords.length-1];
+  if(prev&&s.afterChange&&prev.root===chord.root&&prev.type===chord.type&&prev.bass===chord.bass) return;
+  chords.push(chord); render();
+}
+function tick(){
+  const {rms,ch,bass}=frameFeatures();
+  $('meter').style.width=Math.min(100,rms*600)+'%';
+  if(rms<THR){
+    if(++silent>=SILENCE_FRAMES&&(seg||pend)){finalize(seg);seg=null;pend=null;showLive(null);}
+    return;
+  }
+  silent=0;
+  const best=classify(ch); if(!best) return;
+  if(seg&&best.id===seg.id){addTo(seg,ch,bass);pend=null;}
+  else{
+    if(pend&&pend.id===best.id) addTo(pend,ch,bass);
+    else pend=newSeg(best.id,ch,bass);
+    if(pend.n>=(seg?CHANGE_FRAMES:2)){
+      if(seg){finalize(seg);pend.afterChange=true;}
+      seg=pend;pend=null;
+    }
+  }
+  if(seg) showLive({root:+seg.id.split(':')[0],type:seg.id.split(':')[1],bass:argmax(seg.bv)});
+}
+const argmax=a=>{let m=-1,i=null;a.forEach((v,j)=>{if(v>m&&v>0){m=v;i=j}});return i;};
+function showLive(c){
+  if(!c){$('liveFn').textContent='—';$('liveName').innerHTML='&nbsp;';return;}
+  const t=TYPES[c.type];
+  if(c.bass==null||!t.iv.includes((c.bass-c.root+12)%12)) c.bass=c.root;
+  const d=describe(c);
+  $('liveFn').textContent=d.label;$('liveName').textContent=d.name;
+}
+
+async function startRec(){
+  if(!key){toast('Сначала задайте тональность');return;}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  }catch(e){toast('Нет доступа к микрофону: '+e.message,3500);return;}
+  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
+  await ctx.resume();
+  analyser=ctx.createAnalyser(); analyser.fftSize=16384; analyser.smoothingTimeConstant=0;
+  fbuf=new Float32Array(analyser.frequencyBinCount); tbuf=new Float32Array(analyser.fftSize);
+  src=ctx.createMediaStreamSource(stream); src.connect(analyser);
+  seg=null;pend=null;silent=0;
+  recording=true;
+  $('recBtn').classList.add('on');$('recBtn').textContent='■ Стоп';
+  timer=setInterval(tick,100);
+  render();
+}
+async function stopRec(){
+  if(!recording) return;
+  clearInterval(timer);
+  finalize(seg);seg=null;pend=null;
+  try{src.disconnect();}catch(e){}
+  stream.getTracks().forEach(t=>t.stop());
+  recording=false;
+  $('recBtn').classList.remove('on');$('recBtn').textContent='● Запись';
+  $('meter').style.width='0';showLive(null);
+  render();
+}
+$('recBtn').onclick=()=>recording?stopRec():startRec();
+
+// «+» — сохранить текущее, ввести новую тональность голосом
+$('plusBtn').onclick=async()=>{
+  await stopRec();
+  if(chords.length&&key){
+    const d=new Date();
+    history.unshift({key:keyRu(key),line:$('line').textContent,
+      time:d.toLocaleDateString('ru-RU')+' '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})});
+    history=history.slice(0,100);store.set('akk_hist',history);renderHist();
+  }
+  chords=[];render();
+  listenKey();
+};
+
+// настройки
+function bindRange(id,lab,fn){const el=$(id);const upd=()=>{fn(+el.value);};el.oninput=()=>{upd();store.set('akk_'+id,el.value)};
+  el.value=store.get('akk_'+id,el.value);upd();}
+bindRange('thr','thrVal',v=>{THR=v/1000;$('thrVal').textContent=v;});
+bindRange('minLen','minVal',v=>{MIN_FRAMES=v;$('minVal').textContent=(v/10).toFixed(1)+' с';});
+
+const saved=store.get('akk_key',null);
+if(saved) setKey(saved);
+renderHist();render();
+// для тестов
+window.__akk={parseKey,classify,describe,analyzeSequence,setKey,get chords(){return chords}};
+</script>
+</body>
+</html>
