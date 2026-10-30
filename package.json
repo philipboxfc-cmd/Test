@@ -1,0 +1,18 @@
+{
+  "name": "akkordy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Анализ аккордов по функциям в заданной тональности",
+  "scripts": {
+    "android:init": "cap add android && node scripts/patch-android.js && cap sync android",
+    "android:build": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor-community/speech-recognition": "6.0.1",
+    "@capacitor/android": "6.2.1",
+    "@capacitor/core": "6.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "6.2.1"
+  }
+}
