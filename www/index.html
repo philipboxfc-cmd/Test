@@ -390,7 +390,12 @@ async function recognize(){
     const av=await sp.available(); if(!av.available) throw new Error('нет сервиса распознавания');
     const p=await sp.requestPermissions?.();
     if(p&&p.speechRecognition&&p.speechRecognition!=='granted') throw new Error('нет разрешения');
-    const r=await sp.start({language:'ru-RU',maxResults:5,prompt:'Скажите тональность, например «ре минор»',partialResults:false,popup:true});
+    toast('Говорите: например, «ре минор»',4000);
+    // popup:false — встроенный SpeechRecognizer; системное окно Google есть не на всех телефонах
+    const r=await Promise.race([
+      sp.start({language:'ru-RU',maxResults:5,partialResults:false,popup:false}),
+      new Promise((_,rej)=>setTimeout(()=>{sp.stop().catch(()=>{});rej(new Error('нет ответа'));},12000))
+    ]);
     return r.matches||[];
   }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
