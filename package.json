@@ -4,7 +4,7 @@
   "private": true,
   "description": "Анализ аккордов по функциям в заданной тональности",
   "scripts": {
-    "android:init": "cap add android && node scripts/patch-android.js && cap sync android",
+    "android:init": "cap add android && node scripts/patch-android.js && bash scripts/get-model.sh && cap sync android",
     "android:build": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {

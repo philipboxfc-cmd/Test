@@ -29,3 +29,29 @@ if (java.includes(call) && !java.includes('try { ' + call)) {
   fs.writeFileSync(pluginJava, java);
   console.log('SpeechRecognition plugin patched');
 }
+
+// Офлайн-распознавание речи (Vosk): плагин, регистрация в MainActivity и зависимости
+const pkgDir = 'android/app/src/main/java/com/philipbox/akkordy';
+fs.copyFileSync('native/VoskPlugin.java', pkgDir + '/VoskPlugin.java');
+fs.writeFileSync(pkgDir + '/MainActivity.java', `package com.philipbox.akkordy;
+
+import android.os.Bundle;
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(VoskPlugin.class);
+        super.onCreate(savedInstanceState);
+    }
+}
+`);
+const gradlePath = 'android/app/build.gradle';
+let gradle = fs.readFileSync(gradlePath, 'utf8');
+if (!gradle.includes('vosk-android')) {
+  gradle = gradle.replace(/\ndependencies \{/, `\ndependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.47@aar'
+    implementation 'net.java.dev.jna:jna:5.13.0@aar'`);
+  fs.writeFileSync(gradlePath, gradle);
+}
+console.log('Vosk plugin installed');

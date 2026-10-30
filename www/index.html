@@ -384,7 +384,36 @@ async function listenKey(){
   }finally{btn.disabled=false;btn.textContent='🎤 Сказать';}
   return false;
 }
+// Фразы для офлайн-распознавания: модель выбирает только из них
+const KEY_PHRASES=(()=>{
+  const t=['до','до диез','ре бемоль','ре','ре диез','ми бемоль','ми','фа','фа диез','соль бемоль','соль',
+    'соль диез','ля бемоль','ля','ля диез','си бемоль','си'];
+  const out=[];
+  for(const n of t){out.push(n+' мажор',n+' минор');}
+  return JSON.stringify([...out,'[unk]']);
+})();
+const capVosk=()=>{
+  const C=window.Capacitor;
+  if(!C||!C.isNativePlatform||!C.isNativePlatform()) return null;
+  if(!capVosk.p){
+    const reg=(window.capacitorExports&&window.capacitorExports.registerPlugin)||C.registerPlugin;
+    capVosk.p=reg&&reg('Vosk');
+  }
+  return capVosk.p;
+};
 async function recognize(){
+  const vk=capVosk();
+  if(vk){
+    try{
+      toast('Говорите: например, «ре минор»',4000);
+      const r=await vk.start({grammar:KEY_PHRASES,timeout:7000});
+      return r.matches||[];
+    }catch(e){
+      console.warn('Vosk:',e);
+      if(!capSpeech()) throw e;
+      toast('Офлайн-распознавание: '+(e.message||e)+'. Пробую системное…',3000);
+    }
+  }
   const sp=capSpeech();
   if(sp){
     const av=await sp.available(); if(!av.available) throw new Error('нет сервиса распознавания');
